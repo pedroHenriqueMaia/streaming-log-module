@@ -1,0 +1,53 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    environment: local
+    project: streaming-logs
+
+scrape_configs:
+  # OTel Collector metrics (traces converted to metrics, OTLP metrics)
+  - job_name: otel-collector
+    static_configs:
+      - targets: ['otel-collector:8889']
+
+  # Microservices — endpoint /metrics (prom-client)
+  - job_name: user-service
+    static_configs:
+      - targets: ['user-service:3000']
+    metrics_path: /metrics
+
+  - job_name: watch-service
+    static_configs:
+      - targets: ['watch-service:3000']
+    metrics_path: /metrics
+
+  - job_name: like-service
+    static_configs:
+      - targets: ['like-service:3000']
+    metrics_path: /metrics
+
+  - job_name: payment-service
+    static_configs:
+      - targets: ['payment-service:3000']
+    metrics_path: /metrics
+
+  - job_name: recommendation-service
+    static_configs:
+      - targets: ['recommendation-service:3000']
+    metrics_path: /metrics
+
+  - job_name: log-processor
+    static_configs:
+      - targets: ['log-processor:9091']
+    metrics_path: /metrics
+
+  # Kafka Exporter
+  - job_name: kafka-exporter
+    static_configs:
+      - targets: ['kafka-exporter:9308']
+
+  # Prometheus si mesmo
+  - job_name: prometheus
+    static_configs:
+      - targets: ['localhost:9090']

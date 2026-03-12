@@ -1,0 +1,142 @@
+---
+# ConfigMap com os scripts k6
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: k6-scripts
+  namespace: default
+data:
+  stress-test.js: |
+    import http from 'k6/http';
+    import { check, sleep } from 'k6';
+    import { Rate } from 'k6/metrics';
+
+    const errorRate = new Rate('error_rate');
+
+    export const options = {
+      stages: [
+        { duration: '30s', target: 25  },
+        { duration: '1m',  target: 50  },
+        { duration: '2m',  target: 100 },
+        { duration: '2m',  target: 200 },
+        { duration: '1m',  target: 50  },
+        { duration: '30s', target: 0   },
+      ],
+      thresholds: {
+        http_req_duration: ['p(95)<1000'],
+        http_req_failed:   ['rate<0.05'],
+      },
+    };
+
+    const BASE = __ENV.BASE_URL || 'http://watch-service:3000';
+    const MOVIES = [
+      '11111111-1111-1111-1111-111111111111',
+      '22222222-2222-2222-2222-222222222222',
+      '33333333-3333-3333-3333-333333333333',
+    ];
+
+    export default function () {
+      const userId  = `k8s-user-${Math.floor(Math.random() * 50000)}`;
+      const movieId = MOVIES[Math.floor(Math.random() * MOVIES.length)];
+
+      const res = http.post(
+        `${BASE}/watch`,
+        JSON.stringify({ user_id: userId, movie_id: movieId, device: 'web' }),
+        { headers: { 'Content-Type': 'application/json' } },
+      );
+
+      const ok = check(res, { 'status ok': (r) => r.status < 500 });
+      errorRate.add(!ok ? 1 : 0);
+      sleep(0.2);
+    }
+
+---
+# Job k6 que roda o stress test
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: k6-stress-test
+  namespace: default
+  labels:
+    app: k6-stress-test
+spec:
+  backoffLimit: 0
+  template:
+    metadata:
+      labels:
+        app: k6-stress-test
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: k6
+          image: grafana/k6:latest
+          command: ["k6", "run", "--out", "json=/results/output.json", "/scripts/stress-test.js"]
+          env:
+            - name: BASE_URL
+              value: "http://watch-service:3000"
+            - name: K6_PROMETHEUS_RW_SERVER_URL
+              value: "http://prometheus:9090/api/v1/write"
+          volumeMounts:
+            - name: k6-scripts
+              mountPath: /scripts
+            - name: results
+              mountPath: /results
+          resources:
+            requests:
+              cpu: "500m"
+              memory: "256Mi"
+            limits:
+              cpu: "2"
+              memory: "1Gi"
+      volumes:
+        - name: k6-scripts
+          configMap:
+            name: k6-scripts
+        - name: results
+          emptyDir: {}
+
+---
+# Job k6 para spike test
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: k6-spike-test
+  namespace: default
+  labels:
+    app: k6-spike-test
+spec:
+  backoffLimit: 0
+  template:
+    metadata:
+      labels:
+        app: k6-spike-test
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: k6
+          image: grafana/k6:latest
+          command:
+            - "k6"
+            - "run"
+            - "--vus"
+            - "500"
+            - "--duration"
+            - "2m"
+            - "/scripts/stress-test.js"
+          env:
+            - name: BASE_URL
+              value: "http://watch-service:3000"
+          volumeMounts:
+            - name: k6-scripts
+              mountPath: /scripts
+          resources:
+            requests:
+              cpu: "1"
+              memory: "512Mi"
+            limits:
+              cpu: "4"
+              memory: "2Gi"
+      volumes:
+        - name: k6-scripts
+          configMap:
+            name: k6-scripts

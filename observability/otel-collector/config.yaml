@@ -1,0 +1,62 @@
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  batch:
+    timeout: 5s
+    send_batch_size: 1000
+
+  memory_limiter:
+    check_interval: 1s
+    limit_mib: 512
+    spike_limit_mib: 128
+
+  resource:
+    attributes:
+      - key: environment
+        value: "local"
+        action: insert
+
+exporters:
+  # Traces -> Jaeger
+  otlphttp/jaeger:
+    endpoint: http://jaeger:14268
+    tls:
+      insecure: true
+
+  # Metrics -> Prometheus (scrape endpoint)
+  prometheus:
+    endpoint: "0.0.0.0:8889"
+    namespace: streaming
+    send_timestamps: true
+    metric_expiration: 3m
+
+  # Debug (comentar em prod)
+  logging:
+    verbosity: normal
+
+service:
+  telemetry:
+    logs:
+      level: "warn"
+
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [memory_limiter, batch, resource]
+      exporters: [otlphttp/jaeger, logging]
+
+    metrics:
+      receivers: [otlp]
+      processors: [memory_limiter, batch]
+      exporters: [prometheus]
+
+    logs:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [logging]

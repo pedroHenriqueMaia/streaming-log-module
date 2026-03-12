@@ -1,0 +1,272 @@
+{
+  "title": "Streaming Platform — Log Module",
+  "uid": "streaming-logs",
+  "schemaVersion": 38,
+  "version": 1,
+  "refresh": "10s",
+  "time": { "from": "now-15m", "to": "now" },
+  "tags": ["streaming", "logs", "kafka", "clickhouse"],
+  "panels": [
+    {
+      "id": 1,
+      "type": "row",
+      "title": "Requisicoes",
+      "gridPos": { "x": 0, "y": 0, "w": 24, "h": 1 }
+    },
+    {
+      "id": 2,
+      "title": "Requests/sec por Servico",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 1, "w": 12, "h": 8 },
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "sum(rate(http_requests_total[1m])) by (service)",
+          "legendFormat": "{{service}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "color": { "mode": "palette-classic" }
+        }
+      }
+    },
+    {
+      "id": 3,
+      "title": "Taxa de Erros (5xx)",
+      "type": "timeseries",
+      "gridPos": { "x": 12, "y": 1, "w": 12, "h": 8 },
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "sum(rate(http_requests_total{status=~\"5..\"}[1m])) by (service) / sum(rate(http_requests_total[1m])) by (service)",
+          "legendFormat": "{{service}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "min": 0,
+          "max": 1,
+          "thresholds": {
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 0.01 },
+              { "color": "red", "value": 0.05 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": 4,
+      "type": "row",
+      "title": "Latencia",
+      "gridPos": { "x": 0, "y": 9, "w": 24, "h": 1 }
+    },
+    {
+      "id": 5,
+      "title": "Latencia P95 por Servico",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 10, "w": 12, "h": 8 },
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (le, service))",
+          "legendFormat": "{{service}} p95"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "thresholds": {
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 0.5 },
+              { "color": "red", "value": 1.0 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": 6,
+      "title": "Latencia P50 / P95 / P99",
+      "type": "timeseries",
+      "gridPos": { "x": 12, "y": 10, "w": 12, "h": 8 },
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.50, sum(rate(http_request_duration_seconds_bucket[5m])) by (le))",
+          "legendFormat": "p50"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (le))",
+          "legendFormat": "p95"
+        },
+        {
+          "expr": "histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket[5m])) by (le))",
+          "legendFormat": "p99"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "s" } }
+    },
+    {
+      "id": 7,
+      "type": "row",
+      "title": "Kafka",
+      "gridPos": { "x": 0, "y": 18, "w": 24, "h": 1 }
+    },
+    {
+      "id": 8,
+      "title": "Kafka Consumer Lag",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 19, "w": 12, "h": 8 },
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "sum(kafka_consumergroup_lag) by (consumergroup, topic)",
+          "legendFormat": "{{consumergroup}} / {{topic}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 1000 },
+              { "color": "red", "value": 10000 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": 9,
+      "title": "Kafka Mensagens Produzidas/sec",
+      "type": "timeseries",
+      "gridPos": { "x": 12, "y": 19, "w": 12, "h": 8 },
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "sum(rate(kafka_topic_partition_current_offset[1m])) by (topic)",
+          "legendFormat": "{{topic}}"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "msgps" } }
+    },
+    {
+      "id": 10,
+      "type": "row",
+      "title": "Bancos de Dados",
+      "gridPos": { "x": 0, "y": 27, "w": 24, "h": 1 }
+    },
+    {
+      "id": 11,
+      "title": "Eventos Processados — Total",
+      "type": "stat",
+      "gridPos": { "x": 0, "y": 28, "w": 6, "h": 4 },
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "sum(events_processed_total)",
+          "legendFormat": "Total"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "short" } }
+    },
+    {
+      "id": 12,
+      "title": "Eventos Processados/sec",
+      "type": "stat",
+      "gridPos": { "x": 6, "y": 28, "w": 6, "h": 4 },
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "sum(rate(events_processed_total[1m]))",
+          "legendFormat": "Events/sec"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "reqps" } }
+    },
+    {
+      "id": 13,
+      "title": "Erros de Processamento",
+      "type": "stat",
+      "gridPos": { "x": 12, "y": 28, "w": 6, "h": 4 },
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "sum(events_errors_total)",
+          "legendFormat": "Errors"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "red", "value": 1 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": 14,
+      "title": "ClickHouse — Inserts/sec",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 32, "w": 12, "h": 8 },
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "rate(clickhouse_inserts_total[1m])",
+          "legendFormat": "inserts/sec"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "wps" } }
+    },
+    {
+      "id": 15,
+      "title": "Eventos por Operacao",
+      "type": "piechart",
+      "gridPos": { "x": 12, "y": 32, "w": 12, "h": 8 },
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "sum(events_processed_total) by (operation)",
+          "legendFormat": "{{operation}}"
+        }
+      ]
+    },
+    {
+      "id": 16,
+      "type": "row",
+      "title": "Logs — Loki",
+      "gridPos": { "x": 0, "y": 40, "w": 24, "h": 1 }
+    },
+    {
+      "id": 17,
+      "title": "Logs dos Servicos (Loki)",
+      "type": "logs",
+      "gridPos": { "x": 0, "y": 41, "w": 24, "h": 10 },
+      "datasource": "Loki",
+      "targets": [
+        {
+          "expr": "{job=~\"user-service|watch-service|like-service|payment-service|recommendation-service|log-processor\"}",
+          "legendFormat": ""
+        }
+      ],
+      "options": {
+        "dedupStrategy": "none",
+        "showLabels": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": false
+      }
+    }
+  ]
+}

@@ -1,0 +1,42 @@
+# Claude Code
+.claude/
+
+# Node
+node_modules/
+dist/
+build/
+*.js.map
+*.d.ts
+
+# Env
+.env
+.env.local
+.env.*.local
+
+# Docker volumes (dados locais)
+data/
+volumes/
+
+# Logs
+*.log
+logs/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.vscode/settings.json
+.idea/
+*.swp
+*.swo
+
+# k6 resultados
+k6/results/
+*.json.gz
+
+# Temporarios
+tmp/
+temp/
+.cache/
